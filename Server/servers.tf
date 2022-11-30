@@ -3,14 +3,17 @@ resource "aws_launch_configuration" "ec2LaunchConfig" {
   image_id      = var.AmiID
   instance_type = var.InstanceType
   security_groups=[ aws_security_group.ec2SecurityGrp.id]
+  key_name = var.keyPair
+  iam_instance_profile = aws_iam_instance_profile.test_profile.name
   user_data = <<-EOF
    #!/bin/bash
         #!/bin/bash
         apt update -y
-        apt install apache2 -y
+        apt-get install apache2 python3-pip  awscli -y 
         systemctl start apache2.service
         systemctl enable apache2.service
-        echo "<h><head><title> Udacitys School of Cloud Computing</title></head> <body>Hello from Udgram Hussein Ahmed </body> </h>" > /var/www/html/index.html
+        cd /var/www/html
+        aws s3 \cp  s3://${var.bucketname}/code/index.html .
   EOF
 }
 resource "aws_autoscaling_group" "AutoScallingGroup" {
@@ -91,8 +94,61 @@ resource "aws_lb_listener_rule" "host_based_weighted_routing" {
 }
 
 
+resource "aws_security_group" "bastionSecGrp" {
 
+  vpc_id      = data.aws_vpc.VPC.id
 
+  ingress {
+   
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+
+  }
+   ingress {
+   
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+  
+  }
+}
+resource "aws_instance" "bastionServer" {  
+  ami = var.AmiID
+  instance_type = var.InstanceType
+  subnet_id = data.aws_subnet.PublicSub1.id
+  security_groups=[ aws_security_group.bastionSecGrp.id]
+  key_name = var.keyPair
+
+  tags = {
+    Name = "Jumpbox"
+  }
+}
+
+resource "aws_s3_bucket" "b" {
+  bucket = var.bucketname
+
+  tags = {
+    Name        = "TF web app code"
+    Environment = "Dev"
+  }
+}
+resource "aws_s3_bucket_object" "object" {
+  bucket = aws_s3_bucket.b.bucket
+  source = "webcode/index.html"
+  key = "code/index.html"
+  
+}
 
 resource "aws_security_group" "ec2SecurityGrp" {
 
@@ -104,6 +160,14 @@ resource "aws_security_group" "ec2SecurityGrp" {
     to_port          = 80
     protocol         = "tcp"
     cidr_blocks      = ["0.0.0.0/0"]
+
+  }
+   ingress {
+   
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = [data.aws_vpc.VPC.cidr_block]
 
   }
 

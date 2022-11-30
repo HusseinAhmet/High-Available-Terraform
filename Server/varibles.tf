@@ -20,3 +20,9 @@ variable "MaxCapacity" {
 variable "DesiredCapacity" {
    type = string
 }
+variable "keyPair" {
+   type = string
+}
+variable "bucketname" {
+  type = string
+}

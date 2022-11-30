@@ -5,3 +5,5 @@ CPUPolicyTargetValue=30
 MinCapacity="2"
 MaxCapacity="4"
 DesiredCapacity="2"
+keyPair= "keyforuda"
+bucketname= "terraform-web-code-bucket224424345"
